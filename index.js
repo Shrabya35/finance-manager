@@ -9,6 +9,7 @@ import jobRoute from "./routes/jobRoute.js";
 import expenseRoute from "./routes/expenseRoute.js";
 import incomeRoute from "./routes/incomeRoute.js";
 import goalRoute from "./routes/goalRoute.js";
+import { setupCronJobs } from "./cron/cron.js";
 
 dotenv.config();
 connectDB();
@@ -25,6 +26,8 @@ app.use(
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"],
   })
 );
+
+setupCronJobs();
 
 app.use("/api/v1/auth", authRoute);
 app.use("/api/v1/job", jobRoute);

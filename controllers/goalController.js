@@ -28,6 +28,13 @@ export const addGoal = async (req, res) => {
     }
     const userId = req.user._id;
 
+    const existingGoal = await goalModel.find({ user: userId });
+    if (existingGoal) {
+      return res
+        .statue(400)
+        .json({ message: "You cant have 2 goal at same time" });
+    }
+
     const userExpenses = await expenseModel.find({
       user: userId,
       isRecurring: true,
@@ -110,32 +117,6 @@ export const deleteGoal = async (req, res) => {
     res.status(500).send({
       success: false,
       message: "Error deleting goal",
-      error: error.message,
-    });
-  }
-};
-
-export const searchGoal = async (req, res) => {
-  try {
-    const { name } = req.body;
-    if (!name) {
-      return res.status(400).json({ message: "Name is required" });
-    }
-    const userId = req.user._id;
-    const goal = await goalModel.find({
-      user: userId,
-      name,
-    });
-    res.status(201).json({
-      success: true,
-      message: "Goal searched successfull",
-      goal,
-    });
-  } catch (error) {
-    console.error("Error searching goal:", error);
-    res.status(500).send({
-      success: false,
-      message: "Error searching goal",
       error: error.message,
     });
   }
