@@ -9,6 +9,7 @@ import jobRoute from "./routes/jobRoute.js";
 import expenseRoute from "./routes/expenseRoute.js";
 import incomeRoute from "./routes/incomeRoute.js";
 import goalRoute from "./routes/goalRoute.js";
+import userRoute from "./routes/userRoute.js";
 import { setupCronJobs } from "./cron/cron.js";
 
 dotenv.config();
@@ -24,6 +25,7 @@ app.use(
   cors({
     origin: "*",
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
@@ -34,6 +36,7 @@ app.use("/api/v1/job", jobRoute);
 app.use("/api/v1/expense", expenseRoute);
 app.use("/api/v1/income", incomeRoute);
 app.use("/api/v1/goal", goalRoute);
+app.use("/api/v1/user", userRoute);
 
 app.get("/", (req, res) => {
   res.send("<h1>Welcome to my app</h1>");

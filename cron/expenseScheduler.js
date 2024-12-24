@@ -3,6 +3,7 @@ import expenseModel from "../models/expenseModel.js";
 import userModel from "../models/userModel.js";
 
 export const expenseScheduler = () => {
+  //0:min, 0:hour, *:every day, *every month, *every day of week
   cron.schedule("0 0 * * *", async () => {
     try {
       const today = new Date().toISOString().split("T")[0];

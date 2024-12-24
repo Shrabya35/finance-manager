@@ -5,6 +5,7 @@ import jobModel from "../models/jobModel.js";
 import userModel from "../models/userModel.js";
 
 export const jobScheduler = () => {
+  //0:min, 0:hour, 1:1st day of month, *every month, *every day of week(ignored anyway)
   cron.schedule("0 0 1 * *", async () => {
     const session = await mongoose.startSession();
     session.startTransaction();
