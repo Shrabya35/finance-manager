@@ -83,13 +83,25 @@ export const addGoal = async (req, res) => {
 export const getGoal = async (req, res) => {
   try {
     const userId = req.user._id;
-    const goal = await expenseModel
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+
+    const goal = await goalModel
       .find({ user: userId })
-      .sort({ startDate: -1 });
-    res.status(201).json({
+      .sort({ startDate: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
+
+    const totalGoals = await goalModel.countDocuments({ user: userId });
+
+    res.status(200).json({
       success: true,
       message: "Goals retrieved successfully",
       goal,
+      totalGoals,
+      currentPage: page,
+      totalPages: Math.ceil(totalGoals / limit),
     });
   } catch (error) {
     console.error("Error getting goal:", error);
@@ -100,6 +112,7 @@ export const getGoal = async (req, res) => {
     });
   }
 };
+
 export const deleteGoal = async (req, res) => {
   try {
     const goal = await goalModel.findByIdAndDelete(req.params.gid);

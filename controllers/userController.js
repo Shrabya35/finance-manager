@@ -7,14 +7,31 @@ import goalModel from "../models/goalModel.js";
 export const getUserProfile = async (req, res) => {
   try {
     const userId = req.user._id;
-    const user = await userModel.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-    const incomes = await incomeModel.find({ user: userId }).sort({ date: -1 });
-    const expenses = await expenseModel
+
+    const incomes = await incomeModel
       .find({ user: userId })
-      .sort({ date: -1 });
+      .sort({ date: -1 })
+      .limit(5);
+
+    const expenses = await expenseModel
+      .find({ user: userId, isRecurring: false })
+      .sort({ date: -1 })
+      .limit(5);
+
+    const mergedActivities = [...incomes, ...expenses];
+    const sortedActivities = mergedActivities.sort(
+      (a, b) => new Date(b.date) - new Date(a.date)
+    );
+    const topRecentActivities = sortedActivities.slice(0, 5);
+
+    const totalExpense = await expenseModel.aggregate([
+      { $match: { user: userId, isRecurring: true } },
+      { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
+    ]);
+
+    const totalAmount =
+      totalExpense.length > 0 ? totalExpense[0].totalAmount : 0;
+
     const job = await jobModel.findOne({ user: userId });
     const currentGoal = await goalModel.findOne({
       user: userId,
@@ -24,21 +41,22 @@ export const getUserProfile = async (req, res) => {
       user: userId,
       isAchieved: true,
     });
+
     return res.status(200).json({
       success: true,
-      message: "User profiled fetched successfully",
-      user,
-      incomes: incomes,
-      expenses: expenses,
+      message: "User profile fetched successfully",
+      user: await userModel.findById(userId),
+      totalExpense: totalAmount,
       job: job,
       currentGoal: currentGoal,
       goals: goals,
+      activities: topRecentActivities,
     });
   } catch (error) {
-    console.error("Error fetching userProfile:", error);
+    console.error("Error fetching user profile:", error);
     res.status(500).json({
       success: false,
-      message: "Error fetching userProfile",
+      message: "Error fetching user profile",
       error: error.message,
     });
   }

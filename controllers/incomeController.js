@@ -7,8 +7,8 @@ export const addIncome = async (req, res) => {
   session.startTransaction();
 
   try {
-    const { amount, source, description } = req.body;
-    if (!amount || !source || !description) {
+    const { amount, name, description } = req.body;
+    if (!amount || !name || !description) {
       return res.status(400).send({ error: "All fields are required" });
     }
     const userId = req.user._id;
@@ -16,7 +16,7 @@ export const addIncome = async (req, res) => {
     const Income = await new incomeModel({
       user: userId,
       amount,
-      source,
+      name,
       description,
     }).save({ session });
 
@@ -50,12 +50,23 @@ export const addIncome = async (req, res) => {
 export const getIncome = async (req, res) => {
   try {
     const userId = req.user._id;
-    const income = await incomeModel.find({ user: userId }).sort({ date: -1 });
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const income = await incomeModel
+      .find({ user: userId })
+      .sort({ date: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
 
-    res.status(201).json({
+    const totalIncomes = await incomeModel.countDocuments({ user: userId });
+
+    res.status(200).json({
       success: true,
-      message: "incomes retrieved successfully",
+      message: "Incomes retrieved successfully",
       income,
+      totalIncomes,
+      currentPage: page,
+      totalPages: Math.ceil(totalIncomes / limit),
     });
   } catch (error) {
     console.error("Error getting income:", error);
@@ -69,15 +80,15 @@ export const getIncome = async (req, res) => {
 
 export const updateIncome = async (req, res) => {
   try {
-    const { amount, source, description } = req.body;
+    const { amount, name, description } = req.body;
 
-    if (!amount || !source || description) {
+    if (!amount || !name || description) {
       return res.status(400).send({ error: "All fields are required" });
     }
 
     const updateIncome = {
       amount,
-      source,
+      name,
       description,
     };
 
@@ -147,14 +158,14 @@ export const deleteIncome = async (req, res) => {
 
 export const searchIncome = async (req, res) => {
   try {
-    const { source } = req.body;
-    if (!source) {
-      return res.status(400).json({ message: "Source is required" });
+    const { name } = req.body;
+    if (!name) {
+      return res.status(400).json({ message: "name is required" });
     }
     const userId = req.user._id;
     const income = await incomeModel.find({
       user: userId,
-      source,
+      name,
     });
     res.status(201).json({
       success: true,
