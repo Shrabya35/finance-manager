@@ -2,7 +2,6 @@ import cron from "node-cron";
 import mongoose from "mongoose";
 import goalModel from "../models/goalModel.js";
 import jobModel from "../models/jobModel.js";
-import userModel from "../models/userModel.js";
 
 export const jobScheduler = () => {
   //0:min, 0:hour, 1:1st day of month, *every month, *every day of week(ignored anyway)
@@ -10,32 +9,44 @@ export const jobScheduler = () => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-      const jobs = await jobModel.find({});
-      if (!jobs) {
-        return res.status(400).json({
-          message: "job not found",
-        });
-      }
+      const jobs = await jobModel.find({}).populate("user").session(session);
+
       for (const job of jobs) {
-        const user = await userModel.findById(job.user).session(session);
-        const goal = await goalModel
-          .findOne({ user: user._id })
-          .session(session);
-        if (user) {
-          if (goal) {
-            const netSaving = job.salary - goal.monthlyContribution;
-            user.pocket += netSaving;
-            goal.savedAmount += goal.monthlyContribution;
-          } else {
-            user.pocket += job.salary;
-          }
-          await user.save({ session });
-          await goal.save({ session });
+        const user = job.user;
+        if (!user) {
+          console.warn(`Job ${job._id} has no associated user. Skipping.`);
+          continue;
         }
+
+        const goal = await goalModel
+          .findOne({ user: user._id, expired: false })
+          .session(session);
+
+        if (goal) {
+          const remainingAmount = goal.targetAmount - goal.savedAmount;
+
+          if (remainingAmount <= goal.monthlyContribution) {
+            user.pocket += job.salary - remainingAmount;
+            goal.savedAmount += remainingAmount;
+            goal.isAchieved = true;
+          } else {
+            user.pocket += job.salary - goal.monthlyContribution;
+            goal.savedAmount += goal.monthlyContribution;
+          }
+
+          await goal.save({ session });
+        } else {
+          user.pocket += job.salary;
+        }
+
+        await user.save({ session });
       }
+
+      await session.commitTransaction();
+      console.log("Monthly job salary additions completed successfully.");
     } catch (error) {
       await session.abortTransaction();
-      console.error("Error running monthly job salary addons:", error);
+      console.error("Error running monthly job salary additions:", error);
     } finally {
       session.endSession();
     }

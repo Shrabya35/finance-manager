@@ -38,6 +38,10 @@ const GoalSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  expired: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 export default mongoose.model("Goal", GoalSchema);

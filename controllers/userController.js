@@ -61,3 +61,51 @@ export const getUserProfile = async (req, res) => {
     });
   }
 };
+
+export const goalContribution = async (req, res) => {
+  try {
+    const { amount } = req.body;
+    const userId = req.user._id;
+
+    const goal = await goalModel.findOne({
+      user: userId,
+      isAchieved: false,
+      expired: false,
+    });
+
+    if (!goal) {
+      return res
+        .status(404)
+        .json({ message: "No active goal found for this user." });
+    }
+
+    const requiredAmount = goal.targetAmount - goal.savedAmount;
+
+    if (amount > requiredAmount) {
+      return res
+        .status(400)
+        .json({ message: "Amount exceeds the goal's required amount." });
+    }
+
+    goal.savedAmount += amount;
+
+    if (goal.savedAmount >= goal.targetAmount) {
+      goal.isAchieved = true;
+    }
+
+    await goal.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Contribution added to the goal successfully.",
+      goal,
+    });
+  } catch (error) {
+    console.error("Error contributing to goal:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error contributing to goal.",
+      error: error.message,
+    });
+  }
+};
