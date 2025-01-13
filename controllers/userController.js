@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import userModel from "../models/userModel.js";
 import jobModel from "../models/jobModel.js";
 import expenseModel from "../models/expenseModel.js";
@@ -25,7 +26,12 @@ export const getUserProfile = async (req, res) => {
     const topRecentActivities = sortedActivities.slice(0, 5);
 
     const totalExpense = await expenseModel.aggregate([
-      { $match: { user: userId, isRecurring: true } },
+      {
+        $match: {
+          user: new mongoose.Types.ObjectId(userId),
+          isRecurring: true,
+        },
+      },
       { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
     ]);
 
@@ -36,6 +42,7 @@ export const getUserProfile = async (req, res) => {
     const currentGoal = await goalModel.findOne({
       user: userId,
       isAchieved: false,
+      expired: false,
     });
     const goals = await goalModel.find({
       user: userId,

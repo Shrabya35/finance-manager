@@ -1,37 +1,74 @@
 import expenseModel from "../models/expenseModel.js";
+import userModel from "../models/userModel.js";
+import mongoose from "mongoose";
 
 export const addExpense = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
   try {
     const { name, amount, isRecurring, deductionDate } = req.body;
     if (!name || !amount || !deductionDate) {
       return res.status(400).send({ error: "All fields are required" });
     }
+    if (isRecurring && isNaN(new Date(deductionDate).getTime())) {
+      return res.status(400).send({ error: "Invalid deduction date format" });
+    }
+
+    if (typeof amount !== "number" || amount <= 0) {
+      return res
+        .status(400)
+        .send({ error: "Amount must be a positive number" });
+    }
     const userId = req.user._id;
+
+    if (!isRecurring) {
+      const user = await userModel.findById(userId).session(session);
+      if (user.pocket < amount) {
+        return res
+          .status(400)
+          .send({ error: "Insufficient funds in your account" });
+      }
+      user.pocket -= amount;
+      await user.save({ session });
+    }
+
     if (isRecurring) {
-      const existingRecurringJob = await expenseModel.findOne({
-        user: userId,
-        name,
-      });
-      if (existingRecurringJob) {
+      const existingRecurringExpense = await expenseModel
+        .findOne({
+          user: userId,
+          name,
+        })
+        .session(session);
+
+      if (existingRecurringExpense) {
         return res.status(400).json({
-          message: "Recurring job with a similar name already exists.",
+          message: "Recurring Expense with a similar name already exists.",
         });
       }
     }
-    const newExpense = await new expenseModel({
+
+    const newExpense = new expenseModel({
       user: userId,
       name,
       amount,
       isRecurring,
-      deductionDate,
-    }).save();
+      deductionDate: isRecurring ? deductionDate : new Date().toISOString(),
+    });
+
+    await newExpense.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
 
     res.status(201).json({
       success: true,
-      message: "Expense addedSuccessfully",
+      message: "Expense added successfully",
       newExpense,
     });
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+
     console.error("Error adding expense:", error);
     res.status(500).json({
       success: false,
@@ -44,14 +81,32 @@ export const addExpense = async (req, res) => {
 export const getExpense = async (req, res) => {
   try {
     const userId = req.user._id;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+
     const expense = await expenseModel
-      .find({ user: userId })
+      .find({ user: userId, isRecurring: false })
+      .sort({ date: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
+
+    const monthlyExpense = await expenseModel
+      .find({ user: userId, isRecurring: true })
       .sort({ date: -1 });
+
+    const totalExpense = await expenseModel.countDocuments({
+      user: userId,
+      isRecurring: false,
+    });
 
     res.status(201).json({
       success: true,
       message: "expenses retrieved successfully",
       expense,
+      monthlyExpense,
+      totalExpense,
+      currentPage: page,
+      totalPages: Math.ceil(totalExpense / limit),
     });
   } catch (error) {
     console.error("Error getting expense:", error);
@@ -67,10 +122,15 @@ export const updateExpense = async (req, res) => {
   try {
     const { name, amount, isRecurring, deductionDate } = req.body;
 
-    if (!name || !amount || isRecurring || !deductionDate) {
+    if (!name || !amount || !deductionDate) {
       return res.status(400).send({ error: "ALl field are required " });
     }
 
+    if (!isRecurring) {
+      return res
+        .status(400)
+        .send({ error: "non recurring expense cant be edited " });
+    }
     const updateExpense = {
       name,
       amount,
