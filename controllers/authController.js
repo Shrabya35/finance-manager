@@ -63,7 +63,7 @@ export const loginController = async (req, res) => {
   const { email, password } = req.body;
   try {
     if (!email) {
-      return res.send({ error: "name is required" });
+      return res.send({ error: "email is required" });
     }
     if (!password) {
       return res.send({ error: "password is required" });
@@ -146,6 +146,54 @@ export const googleSignIn = async (req, res) => {
       success: false,
       message: "Error in Google SignIn",
       error,
+    });
+  }
+};
+
+export const changePassword = async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    const userId = req.user._id;
+
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    // if (newPassword.length < 8) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "New password must be at least 8 characters long",
+    //   });
+    // }
+
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isMatch = await comparePassword(oldPassword, user.password);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid current password",
+      });
+    }
+
+    const hashedPassword = await hashPassword(newPassword);
+
+    user.password = hashedPassword;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Password updated successfully",
+    });
+  } catch (error) {
+    console.error("Error updating password:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error updating password",
+      error: error.message,
     });
   }
 };

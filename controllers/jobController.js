@@ -1,4 +1,5 @@
 import jobModel from "../models/jobModel.js";
+import goalModel from "../models/goalModel.js";
 
 export const addJob = async (req, res) => {
   try {
@@ -70,24 +71,39 @@ export const updateJob = async (req, res) => {
         .send({ error: "At least one field is required to update" });
     }
 
-    const updateJob = {
-      name,
-      salary,
-      organization,
-    };
-
-    const job = await jobModel.findByIdAndUpdate(req.params.jid, updateJob, {
-      new: true,
-    });
-
-    if (!job) {
+    const oldJob = await jobModel.findById(req.params.jid);
+    if (!oldJob) {
       return res.status(404).json({ message: "Job not found." });
     }
+
+    const goal = await goalModel.findOne({
+      user: oldJob._id,
+      isAchieved: false,
+      expire: false,
+    });
+
+    if (goal && salary && goal.monthlyContribution > salary) {
+      return res.status(400).json({
+        message:
+          "You need to decrease the monthly contribution on your goal to continue.",
+      });
+    }
+
+    const updateFields = {};
+    if (name) updateFields.name = name;
+    if (salary) updateFields.salary = salary;
+    if (organization) updateFields.organization = organization;
+
+    const updatedJob = await jobModel.findByIdAndUpdate(
+      req.params.jid,
+      { $set: updateFields },
+      { new: true }
+    );
 
     res.status(200).json({
       success: true,
       message: "Job updated successfully",
-      job,
+      job: updatedJob,
     });
   } catch (error) {
     console.error("Error updating job:", error);

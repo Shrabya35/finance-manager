@@ -5,6 +5,43 @@ import expenseModel from "../models/expenseModel.js";
 import incomeModel from "../models/incomeModel.js";
 import goalModel from "../models/goalModel.js";
 
+export const editName = async (req, res) => {
+  try {
+    const { name } = req.body;
+    const userId = req.user._id;
+
+    if (!name) {
+      return res.send({ error: "name is required" });
+    }
+
+    const user = await userModel.findByIdAndUpdate(
+      userId,
+      { name: name },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "User name updated successfully",
+      user,
+    });
+  } catch (error) {
+    console.error("Error updating user name:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error updating user name",
+      error: error.message,
+    });
+  }
+};
+
 export const getUserProfile = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -44,11 +81,6 @@ export const getUserProfile = async (req, res) => {
       isAchieved: false,
       expired: false,
     });
-    const goals = await goalModel.find({
-      user: userId,
-      isAchieved: true,
-    });
-
     return res.status(200).json({
       success: true,
       message: "User profile fetched successfully",
@@ -56,7 +88,6 @@ export const getUserProfile = async (req, res) => {
       totalExpense: totalAmount,
       job: job,
       currentGoal: currentGoal,
-      goals: goals,
       activities: topRecentActivities,
     });
   } catch (error) {
@@ -64,54 +95,6 @@ export const getUserProfile = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error fetching user profile",
-      error: error.message,
-    });
-  }
-};
-
-export const goalContribution = async (req, res) => {
-  try {
-    const { amount } = req.body;
-    const userId = req.user._id;
-
-    const goal = await goalModel.findOne({
-      user: userId,
-      isAchieved: false,
-      expired: false,
-    });
-
-    if (!goal) {
-      return res
-        .status(404)
-        .json({ message: "No active goal found for this user." });
-    }
-
-    const requiredAmount = goal.targetAmount - goal.savedAmount;
-
-    if (amount > requiredAmount) {
-      return res
-        .status(400)
-        .json({ message: "Amount exceeds the goal's required amount." });
-    }
-
-    goal.savedAmount += amount;
-
-    if (goal.savedAmount >= goal.targetAmount) {
-      goal.isAchieved = true;
-    }
-
-    await goal.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Contribution added to the goal successfully.",
-      goal,
-    });
-  } catch (error) {
-    console.error("Error contributing to goal:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error contributing to goal.",
       error: error.message,
     });
   }
