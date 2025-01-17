@@ -156,6 +156,7 @@ export const goalContribution = async (req, res) => {
   try {
     const { amount } = req.body;
     const userId = req.user._id;
+    const numericAmount = Number(amount);
 
     const goal = await goalModel.findOne({
       user: userId,
@@ -171,13 +172,13 @@ export const goalContribution = async (req, res) => {
 
     const requiredAmount = goal.targetAmount - goal.savedAmount;
 
-    if (amount > requiredAmount) {
+    if (numericAmount > requiredAmount) {
       return res
         .status(400)
         .json({ message: "Amount exceeds the goal's required amount." });
     }
 
-    goal.savedAmount += amount;
+    goal.savedAmount += numericAmount;
 
     if (goal.savedAmount >= goal.targetAmount) {
       goal.isAchieved = true;

@@ -8,16 +8,16 @@ export const addExpense = async (req, res) => {
   try {
     const { name, amount, isRecurring, deductionDate } = req.body;
     if (!name || !amount || !deductionDate) {
-      return res.status(400).send({ error: "All fields are required" });
+      return res.status(400).json({ message: "All fields are required" });
     }
     if (isRecurring && isNaN(new Date(deductionDate).getTime())) {
-      return res.status(400).send({ error: "Invalid deduction date format" });
+      return res.status(400).json({ message: "Invalid deduction date format" });
     }
 
     if (typeof amount !== "number" || amount <= 0) {
       return res
         .status(400)
-        .send({ error: "Amount must be a positive number" });
+        .json({ message: "Amount must be a positive number" });
     }
     const userId = req.user._id;
 
@@ -26,9 +26,10 @@ export const addExpense = async (req, res) => {
       if (user.pocket < amount) {
         return res
           .status(400)
-          .send({ error: "Insufficient funds in your account" });
+          .json({ message: "Insufficient funds in your account" });
       }
-      user.pocket -= amount;
+      const numericAmount = Number(amount);
+      user.pocket -= numericAmount;
       await user.save({ session });
     }
 
@@ -123,13 +124,13 @@ export const updateExpense = async (req, res) => {
     const { name, amount, isRecurring, deductionDate } = req.body;
 
     if (!name || !amount || !deductionDate) {
-      return res.status(400).send({ error: "ALl field are required " });
+      return res.status(400).json({ message: "ALl field are required " });
     }
 
     if (!isRecurring) {
       return res
         .status(400)
-        .send({ error: "non recurring expense cant be edited " });
+        .json({ message: "non recurring expense cant be edited " });
     }
     const updateExpense = {
       name,
@@ -157,7 +158,7 @@ export const updateExpense = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating expense:", error);
-    res.status(500).send({
+    res.status(500).json({
       success: false,
       message: "Error updating expense",
       error: error.message,
@@ -172,13 +173,13 @@ export const deleteExpense = async (req, res) => {
       return res.status(404).json({ message: "Expense not found." });
     }
 
-    res.status(200).send({
+    res.status(200).json({
       success: true,
       message: "Expense deleted successfully",
     });
   } catch (error) {
     console.error("Error deleting expense:", error);
-    res.status(500).send({
+    res.status(500).json({
       success: false,
       message: "Error deleting expense",
       error: error.message,
@@ -204,7 +205,7 @@ export const searchExpense = async (req, res) => {
     });
   } catch (error) {
     console.error("Error searching expense:", error);
-    res.status(500).send({
+    res.status(500).json({
       success: false,
       message: "Error searching expense",
       error: error.message,

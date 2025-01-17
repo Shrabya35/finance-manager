@@ -9,7 +9,7 @@ export const addIncome = async (req, res) => {
   try {
     const { amount, name, description } = req.body;
     if (!amount || !name || !description) {
-      return res.status(400).send({ error: "All fields are required" });
+      return res.status(400).json({ message: "All fields are required" });
     }
     const userId = req.user._id;
     console.log(userId);
@@ -35,7 +35,6 @@ export const addIncome = async (req, res) => {
       success: true,
       message: "Income added Successfully",
       Income,
-      userPocket: user.Pocket,
     });
   } catch (error) {
     console.error("Error adding income:", error);
@@ -83,7 +82,7 @@ export const updateIncome = async (req, res) => {
     const { amount, name, description } = req.body;
 
     if (!amount || !name || description) {
-      return res.status(400).send({ error: "All fields are required" });
+      return res.status(400).json({ message: "All fields are required" });
     }
 
     const updateIncome = {
@@ -111,7 +110,7 @@ export const updateIncome = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating income:", error);
-    res.status(500).send({
+    res.status(500).json({
       success: false,
       message: "Error updating income",
       error: error.message,
@@ -142,13 +141,13 @@ export const deleteIncome = async (req, res) => {
     await session.commitTransaction();
     session.endSession();
 
-    res.status(200).send({
+    res.status(200).json({
       success: true,
       message: "Income deleted successfully",
     });
   } catch (error) {
     console.error("Error deleting income:", error);
-    res.status(500).send({
+    res.status(500).json({
       success: false,
       message: "Error deleting income",
       error: error.message,
@@ -174,7 +173,7 @@ export const searchIncome = async (req, res) => {
     });
   } catch (error) {
     console.error("Error searching income:", error);
-    res.status(500).send({
+    res.status(500).json({
       success: false,
       message: "Error searching income",
       error: error.message,

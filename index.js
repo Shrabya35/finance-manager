@@ -42,6 +42,11 @@ app.get("/", (req, res) => {
   res.send("<h1>Welcome to my app</h1>");
 });
 
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: "Internal Server Error" });
+});
+
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`.bgBlue.white);
 });
